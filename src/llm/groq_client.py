@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import AsyncGenerator
-
-from groq import AsyncGroq
+from urllib import request
 
 from src.config import settings
 from src.utils.logger import get_logger
@@ -14,7 +14,6 @@ logger = get_logger(__name__)
 class GroqClient:
     def __init__(self) -> None:
         self._enabled = bool(settings.groq_api_key)
-        self._client = AsyncGroq(api_key=settings.groq_api_key) if self._enabled else None
 
     async def stream_reply(self, prompt: str, context: str = "") -> AsyncGenerator[str, None]:
         if not self._enabled:
@@ -28,12 +27,11 @@ class GroqClient:
             return
 
         try:
-            stream = await self._client.chat.completions.create(
-                model=settings.groq_model,
-                temperature=0.4,
-                max_tokens=180,
-                stream=True,
-                messages=[
+            payload = {
+                "model": settings.groq_model,
+                "temperature": 0.4,
+                "max_tokens": 180,
+                "messages": [
                     {
                         "role": "system",
                         "content": (
@@ -44,11 +42,29 @@ class GroqClient:
                     {"role": "system", "content": f"Relevant dealership memory: {context}"},
                     {"role": "user", "content": prompt},
                 ],
+            }
+            headers = {
+                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Content-Type": "application/json",
+            }
+
+            req = request.Request(
+                url="https://api.groq.com/openai/v1/chat/completions",
+                method="POST",
+                headers=headers,
+                data=json.dumps(payload).encode("utf-8"),
             )
-            async for part in stream:
-                delta = part.choices[0].delta.content or ""
-                if delta:
-                    yield delta
+
+            def _call_api() -> str:
+                with request.urlopen(req, timeout=settings.llm_timeout_sec) as resp:
+                    body = resp.read().decode("utf-8")
+                data = json.loads(body)
+                return data["choices"][0]["message"]["content"]
+
+            content = await asyncio.to_thread(_call_api)
+            for token in content.split():
+                await asyncio.sleep(0)
+                yield token + " "
         except Exception as exc:
-            logger.exception("Groq streaming failed: %s", exc)
+            logger.warning("Groq reply failed: %s", exc)
             yield "Maaf kijiye, network issue hua hai. Kya aap model aur budget dubara batayenge?"

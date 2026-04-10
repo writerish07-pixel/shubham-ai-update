@@ -1,52 +1,51 @@
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from pathlib import Path
 
 from src.config import settings
-from src.utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 @dataclass
 class MemoryItem:
+    id: str
     text: str
     metadata: dict
 
 
 class VectorMemory:
+    """Dependency-free vector-like memory with JSON persistence.
+
+    Uses token overlap scoring to keep runtime robust even when vector DB packages
+    are unavailable in restricted environments.
+    """
+
     def __init__(self) -> None:
-        self._in_memory: list[MemoryItem] = []
-        self._mode = "memory"
-        self._collection = None
-
+        self._items: list[MemoryItem] = []
         os.makedirs(settings.learning_store_dir, exist_ok=True)
-        try:
-            import chromadb
-            from chromadb.utils import embedding_functions
+        self._db_file = Path(settings.learning_store_dir) / "memory.json"
+        self._load()
 
-            client = chromadb.PersistentClient(path=settings.learning_store_dir)
-            ef = embedding_functions.DefaultEmbeddingFunction()
-            self._collection = client.get_or_create_collection("calls", embedding_function=ef)
-            self._mode = "chroma"
-        except Exception as exc:
-            logger.warning("Chroma unavailable, using in-memory store: %s", exc)
+    def _load(self) -> None:
+        if not self._db_file.exists():
+            return
+        data = json.loads(self._db_file.read_text(encoding="utf-8"))
+        self._items = [MemoryItem(**item) for item in data]
+
+    def _save(self) -> None:
+        data = [asdict(item) for item in self._items]
+        self._db_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
     def add(self, item_id: str, text: str, metadata: dict) -> None:
-        if self._mode == "chroma":
-            self._collection.add(ids=[item_id], documents=[text], metadatas=[metadata])
-            return
-        self._in_memory.append(MemoryItem(text=text, metadata=metadata))
+        self._items.append(MemoryItem(id=item_id, text=text, metadata=metadata))
+        self._save()
 
     def search(self, query: str, k: int = 3) -> list[str]:
-        if self._mode == "chroma":
-            result = self._collection.query(query_texts=[query], n_results=k)
-            return result.get("documents", [[]])[0]
-
         query_terms = set(query.lower().split())
         scored = []
-        for item in self._in_memory:
+        for item in self._items:
             overlap = len(query_terms.intersection(set(item.text.lower().split())))
             scored.append((overlap, item.text))
         scored.sort(key=lambda x: x[0], reverse=True)

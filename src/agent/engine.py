@@ -19,18 +19,24 @@ class ConversationEngine:
         self.rag = rag
 
     async def generate_response(self, state: ConversationState, user_text: str):
-        state.add_user(user_text)
-        decision = self.router.route(user_text)
+        cleaned_input = (user_text or "").strip()
+        if not cleaned_input:
+            reply = "Ji, aap aaraam se batayein, aapko kis type ki bike chahiye?"
+            state.add_agent(reply)
+            return reply, None, self.tts.stream(reply)
+
+        state.add_user(cleaned_input)
+        decision = self.router.route(cleaned_input)
 
         if decision.source == "script":
             reply = self._enforce_sales_style(decision.text)
             state.add_agent(reply)
-            asyncio.create_task(self.learner.learn_from_turn(state.call_id, user_text, reply, decision.intent))
+            asyncio.create_task(self.learner.learn_from_turn(state.call_id, cleaned_input, reply, decision.intent))
             return reply, decision.intent, self.tts.stream(reply)
 
-        context = self.rag.context_for(user_text)
+        context = self.rag.context_for(cleaned_input)
         chunks = []
-        async for token in self.llm.stream_reply(user_text, context=context):
+        async for token in self.llm.stream_reply(cleaned_input, context=context):
             chunks.append(token)
         reply = self._enforce_sales_style("".join(chunks).strip())
 
@@ -40,12 +46,14 @@ class ConversationEngine:
             reply = reply.split(".")[0].strip() + "."
 
         state.add_agent(reply)
-        asyncio.create_task(self.learner.learn_from_turn(state.call_id, user_text, reply, decision.intent))
+        asyncio.create_task(self.learner.learn_from_turn(state.call_id, cleaned_input, reply, decision.intent))
         return reply, decision.intent, self.tts.stream(reply)
 
     @staticmethod
     def _enforce_sales_style(text: str) -> str:
         cleaned = text.strip()
+        if not cleaned:
+            cleaned = "Main aapki madad ke liye hoon. Aap model, budget, ya usage share kijiye."
         if not cleaned.endswith((".", "?", "!")):
             cleaned += "."
         if len(cleaned.split()) < 6:

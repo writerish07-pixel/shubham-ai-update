@@ -9,14 +9,14 @@ Low-latency, hybrid-script + LLM, self-learning voice agent for two-wheeler deal
   /speech     # streaming STT/TTS + end-of-speech detection
   /agent      # conversation engine + state
   /hybrid     # intent classifier + script-first router
-  /llm        # Groq streaming client
+  /llm        # Groq integration client (HTTP)
   /learning   # memory store, call learner, RAG retriever, file ingestion
   /utils      # logger/helper utilities
 ```
 
 ## Key Features
 
-- Streaming pipeline over WebSocket (`/ws/call/{call_id}`)
+- Streaming pipeline orchestration
 - End-of-speech detection with configurable 500–800ms silence window
 - Interrupt control (`user_interrupt` event cancels ongoing TTS)
 - Hybrid router with script-first responses for high-frequency intents
@@ -27,13 +27,18 @@ Low-latency, hybrid-script + LLM, self-learning voice agent for two-wheeler deal
 ## Run
 
 ```bash
-pip install -r requirements.txt
 python main.py
 ```
 
-## Env
+- If `fastapi` + `uvicorn` are installed, server mode starts.
+- If not installed, app auto-runs QA simulation mode for end-to-end validation.
 
-- `GROQ_API_KEY` (optional; fallback response used if absent)
+## Environment Keys
+
+- `EXOTEL_API_KEY`
+- `EXOTEL_API_TOKEN`
+- `SARVAM_API_KEY`
+- `GROQ_API_KEY`
 - `GROQ_MODEL` (default `llama-3.3-70b-versatile`)
 - `EOS_SILENCE_MS` (default `650`)
 - `EOS_MIN_UTTERANCE_MS` (default `400`)

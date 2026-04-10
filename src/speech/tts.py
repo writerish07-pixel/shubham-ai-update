@@ -160,15 +160,25 @@ class StreamingTTS:
 
         Called once at startup so the first caller gets instant audio
         for the greeting and other high-frequency phrases.
+
+        Mirrors the logic in ``stream()``: short texts (≤ 25 words) are
+        cached as-is; longer texts are split into segments so the
+        segment-level cache keys match what ``stream()`` will look up.
         """
         if not self._enabled:
             return
+        phrases: list[str] = []
+        for t in texts:
+            if len(t.split()) <= 25:
+                phrases.append(t)
+            else:
+                phrases.extend(self._split_segments(t))
         results = await asyncio.gather(
-            *(self._synthesise(t) for t in texts),
+            *(self._synthesise(p) for p in phrases),
             return_exceptions=True,
         )
         cached = sum(1 for r in results if isinstance(r, bytes))
-        logger.info("TTS warm cache: %d/%d phrases pre-cached", cached, len(texts))
+        logger.info("TTS warm cache: %d/%d phrases pre-cached", cached, len(phrases))
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:

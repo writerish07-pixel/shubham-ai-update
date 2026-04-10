@@ -57,6 +57,7 @@ class StreamingTTS:
     async def _synthesise(self, text: str) -> bytes | None:
         cache_key = text.strip().lower()
         if cache_key in self._cache:
+            self._cache.move_to_end(cache_key)
             return self._cache[cache_key]
 
         try:

@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -31,6 +32,7 @@ class VectorMemory:
     def __init__(self) -> None:
         self._items: list[MemoryItem] = []
         self._lock = threading.Lock()
+        self._write_executor = ThreadPoolExecutor(max_workers=1)
         try:
             os.makedirs(settings.learning_store_dir, exist_ok=True)
         except OSError as exc:
@@ -57,10 +59,10 @@ class VectorMemory:
             logger.warning("Failed to persist memory store: %s", exc)
 
     def _save_async(self) -> None:
-        """Schedule persistence on a background thread so as not to block the event loop."""
+        """Schedule persistence on a single-thread executor so writes are serialised."""
         try:
             loop = asyncio.get_running_loop()
-            loop.run_in_executor(None, self._save)
+            loop.run_in_executor(self._write_executor, self._save)
         except RuntimeError:
             self._save()
 

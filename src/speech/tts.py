@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+from collections import OrderedDict
 
 import httpx
 
@@ -19,10 +20,12 @@ class StreamingTTS:
     of the pipeline keeps working during local development.
     """
 
+    _MAX_CACHE_SIZE = 256
+
     def __init__(self) -> None:
         self._enabled = bool(settings.sarvam_api_key)
         self._client: httpx.AsyncClient | None = None
-        self._cache: dict[str, bytes] = {}
+        self._cache: OrderedDict[str, bytes] = OrderedDict()
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
@@ -78,6 +81,8 @@ class StreamingTTS:
             if audios and audios[0]:
                 audio_bytes = base64.b64decode(audios[0])
                 self._cache[cache_key] = audio_bytes
+                if len(self._cache) > self._MAX_CACHE_SIZE:
+                    self._cache.popitem(last=False)
                 return audio_bytes
             logger.warning("Sarvam TTS returned empty audio for: %s", text[:40])
             return None

@@ -40,7 +40,7 @@ class Settings:
 
     # --- STT ---
     stt_timeout_sec: float = float(os.getenv("STT_TIMEOUT_SEC", "2.0"))
-    tts_timeout_sec: float = float(os.getenv("TTS_TIMEOUT_SEC", "2.0"))
+    tts_timeout_sec: float = float(os.getenv("TTS_TIMEOUT_SEC", "3.5"))
 
     # --- End-of-speech ---
     eos_silence_ms: int = int(os.getenv("EOS_SILENCE_MS", "650"))

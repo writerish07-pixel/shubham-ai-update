@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse, Response
 from src.agent.engine import ConversationEngine
 from src.agent.models import ConversationState
 from src.config import settings
+from src.hybrid.scripts import SCRIPT_RESPONSES
 from src.learning.ingest import FileLearner
 from src.learning.learner import CallLearner
 from src.learning.rag import RAGRetriever
@@ -45,6 +46,9 @@ async def lifespan(app: FastAPI):
     file_learner = FileLearner(memory)
     engine = ConversationEngine(learner, rag)
     logger.info("Voice agent started — modules initialised")
+    # Pre-cache greeting + all scripted responses for instant TTS
+    _warm_phrases = [GREETING] + list(SCRIPT_RESPONSES.values())
+    asyncio.create_task(engine.tts.warm_cache(_warm_phrases))
     yield
     # Graceful shutdown: close HTTP clients
     if engine:

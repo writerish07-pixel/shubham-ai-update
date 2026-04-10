@@ -48,10 +48,29 @@ class ConversationEngine:
             return reply, decision.intent, self.tts.stream(reply)
 
         context = self.rag.context_for(cleaned_input)
+
+        # --- Streaming LLM-to-TTS: start first-sentence TTS while LLM
+        # is still generating the rest so latencies overlap. ---
+        first_sentence: str | None = None
+        first_tts_task: asyncio.Task | None = None
+        buffer = ""
+        _SENT_RE = re.compile(r'(?<=[!?])\s+|(?<!\d)(?<=[.])\s+')
+
         chunks: list[str] = []
         try:
             async for token in self.llm.stream_reply(cleaned_input, context=context):
                 chunks.append(token)
+                # Detect first complete sentence boundary while streaming
+                if first_sentence is None:
+                    buffer += token
+                    parts = _SENT_RE.split(buffer, maxsplit=1)
+                    if len(parts) > 1 and parts[0].strip():
+                        first_sentence = parts[0].strip()
+                        # Fire TTS for first sentence immediately (overlaps
+                        # with remaining LLM generation).
+                        first_tts_task = asyncio.ensure_future(
+                            self.tts._synthesise(first_sentence)
+                        )
         except Exception as exc:
             logger.warning("LLM stream error: %s", exc)
 
@@ -72,7 +91,52 @@ class ConversationEngine:
         asyncio.create_task(
             self._safe_learn(state.call_id, cleaned_input, reply, decision.intent)
         )
-        return reply, decision.intent, self.tts.stream(reply)
+
+        # Build an optimised TTS stream that re-uses the pre-fetched first
+        # sentence audio (if available) so playback starts sooner.
+        audio_stream = self._tts_with_prefetch(reply, first_sentence, first_tts_task)
+        return reply, decision.intent, audio_stream
+
+    async def _tts_with_prefetch(
+        self,
+        reply: str,
+        prefetched_sentence: str | None,
+        prefetch_task: asyncio.Task | None,
+    ):
+        """Yield TTS audio, re-using a pre-fetched first-sentence result.
+
+        If *prefetched_sentence* matches the start of *reply* and the
+        pre-fetch task succeeded, its audio is yielded immediately
+        (saving one API round-trip).  The remainder of *reply* is then
+        synthesised via the normal ``tts.stream`` path.
+        """
+        used_prefetch = False
+        if (
+            prefetched_sentence
+            and prefetch_task is not None
+            and reply.startswith(prefetched_sentence)
+        ):
+            try:
+                audio = await prefetch_task
+                if audio:
+                    yield audio
+                    used_prefetch = True
+                    # Synthesise the rest (after the first sentence)
+                    remainder = reply[len(prefetched_sentence):].strip()
+                    if remainder:
+                        async for chunk in self.tts.stream(remainder):
+                            yield chunk
+                    return
+            except Exception:
+                pass  # fall through to normal path
+
+        # Cancel unused prefetch to avoid orphaned coroutines
+        if prefetch_task and not prefetch_task.done():
+            prefetch_task.cancel()
+
+        # Normal path (no prefetch or prefetch failed)
+        async for chunk in self.tts.stream(reply):
+            yield chunk
 
     async def _safe_learn(
         self, call_id: str, user_text: str, agent_text: str, intent: str | None

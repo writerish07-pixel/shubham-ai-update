@@ -5,11 +5,15 @@ from difflib import SequenceMatcher
 
 
 INTENT_PATTERNS = {
-    "price": ["price", "on road", "kitne ki", "cost", "quotation"],
-    "mileage": ["mileage", "kmpl", "average", "kitna deti"],
-    "offers": ["offer", "discount", "exchange", "cashback"],
-    "finance": ["finance", "emi", "loan", "down payment"],
-    "availability": ["available", "delivery", "stock", "color available"],
+    "price": ["price", "on road", "kitne ki", "cost", "quotation", "kya price", "kitna hai", "rate"],
+    "mileage": ["mileage", "kmpl", "average", "kitna deti", "fuel", "petrol", "kitni deti"],
+    "offers": ["offer", "discount", "exchange", "cashback", "deal", "scheme"],
+    "finance": ["finance", "emi", "loan", "down payment", "installment", "kist"],
+    "availability": ["available", "delivery", "stock", "color available", "kab milegi", "ready"],
+    "comparison": ["compare", "vs", "better", "difference", "konsi acchi"],
+    "booking": ["book", "booking", "advance", "token", "register"],
+    "test_ride": ["test ride", "test drive", "chalake dekhna", "ride"],
+    "service": ["service", "warranty", "maintenance", "servicing"],
 }
 
 

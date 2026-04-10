@@ -114,7 +114,7 @@ async def main():
         out = await run_pipeline(engine, state, "Splendor ka price kya hai?", True)
         stress_latencies.append(out["total_ms"])
 
-    learning_records = len(memory._items)
+    learning_records = memory.count
 
     print("FINAL_RESULTS", results)
     print("INTERRUPTION", interruption)

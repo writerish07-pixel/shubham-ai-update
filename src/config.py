@@ -35,12 +35,12 @@ class Settings:
     sarvam_tts_url: str = os.getenv(
         "SARVAM_TTS_URL", "https://api.sarvam.ai/text-to-speech"
     )
-    sarvam_tts_speaker: str = os.getenv("SARVAM_TTS_SPEAKER", "meera")
+    sarvam_tts_speaker: str = os.getenv("SARVAM_TTS_SPEAKER", "anushka")
     sarvam_tts_language: str = os.getenv("SARVAM_TTS_LANGUAGE", "hi-IN")
 
     # --- STT ---
     stt_timeout_sec: float = float(os.getenv("STT_TIMEOUT_SEC", "2.0"))
-    tts_timeout_sec: float = float(os.getenv("TTS_TIMEOUT_SEC", "2.0"))
+    tts_timeout_sec: float = float(os.getenv("TTS_TIMEOUT_SEC", "3.5"))
 
     # --- End-of-speech ---
     eos_silence_ms: int = int(os.getenv("EOS_SILENCE_MS", "650"))

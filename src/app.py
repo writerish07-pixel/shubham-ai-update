@@ -4,6 +4,8 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from xml.sax.saxutils import escape as xml_escape
+
 from fastapi import FastAPI, File, Form, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -99,10 +101,11 @@ async def exotel_answer(request: Request):
     form = await request.form()
     call_sid = str(form.get("CallSid", "unknown"))
     ws_url = callback_base.replace("http", "ws", 1) + f"/ws/call/{call_sid}"
+    safe_url = xml_escape(ws_url, entities={'"': '&quot;'})
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         "<Response>"
-        f'  <Connect><Stream url="{ws_url}" /></Connect>'
+        f'  <Connect><Stream url="{safe_url}" /></Connect>'
         "</Response>"
     )
     return Response(content=xml, media_type="application/xml")

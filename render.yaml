@@ -2,8 +2,22 @@ services:
   - type: web
     name: shubham-motors-ai
     runtime: python
-    buildCommand: apt-get install -y ffmpeg && pip install -r requirements.txt
+    buildCommand: apt-get update && apt-get install -y ffmpeg tesseract-ocr && pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PORT
-        value: 8000
+        value: "8000"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: EXOTEL_API_KEY
+        sync: false
+      - key: EXOTEL_API_TOKEN
+        sync: false
+      - key: EXOTEL_SID
+        sync: false
+      - key: EXOTEL_EXOPHONE
+        sync: false
+      - key: BASE_URL
+        sync: false

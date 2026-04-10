@@ -61,9 +61,10 @@ class ConversationEngine:
         if agent_ratio > 0.35:
             sentences = [s.strip() for s in reply.replace("?", "?.").replace("!", "!.").split(".") if s.strip()]
             if len(sentences) > 2:
-                reply = ". ".join(sentences[:2])
-                if not reply.endswith((".", "?", "!")):
-                    reply += "."
+                reply = " ".join(
+                    s if s.endswith(("?", "!")) else s + "."
+                    for s in sentences[:2]
+                )
 
         state.add_agent(reply)
         asyncio.create_task(

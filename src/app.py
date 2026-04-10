@@ -85,7 +85,8 @@ async def health() -> dict:
 async def learning_upload(file: UploadFile = File(...)):
     assert file_learner is not None
     Path(settings.docs_dir).mkdir(parents=True, exist_ok=True)
-    destination = Path(settings.docs_dir) / (file.filename or "upload.bin")
+    safe_name = Path(file.filename or "upload.bin").name  # strip directory components
+    destination = Path(settings.docs_dir) / safe_name
     destination.write_bytes(await file.read())
     text = file_learner.ingest(str(destination))
     return JSONResponse({"stored": file.filename, "chars": len(text)})

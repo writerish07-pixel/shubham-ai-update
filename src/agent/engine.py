@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 
 from src.agent.models import ConversationState
 from src.hybrid.router import HybridRouter
@@ -59,12 +60,13 @@ class ConversationEngine:
         # 70/30 user-agent talk ratio: trim to first two sentences if agent is talking too much
         _user_ratio, agent_ratio = state.talk_ratio
         if agent_ratio > 0.35:
-            sentences = [s.strip() for s in reply.replace("?", "?.").replace("!", "!.").split(".") if s.strip()]
+            # Split on sentence-ending punctuation + space; negative lookbehind
+            # for digits preserves decimals like "1.5 lakh" or "9.9%".
+            sentences = [s.strip() for s in re.split(r'(?<=[!?])\s+|(?<!\d)(?<=[.])\s+', reply) if s.strip()]
             if len(sentences) > 2:
-                reply = " ".join(
-                    s if s.endswith(("?", "!")) else s + "."
-                    for s in sentences[:2]
-                )
+                reply = " ".join(sentences[:2])
+                if not reply.endswith((".", "?", "!")):
+                    reply += "."
 
         state.add_agent(reply)
         asyncio.create_task(

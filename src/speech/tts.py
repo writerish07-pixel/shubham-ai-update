@@ -72,7 +72,7 @@ class StreamingTTS:
                     "inputs": [text],
                     "target_language_code": settings.sarvam_tts_language,
                     "speaker": settings.sarvam_tts_speaker,
-                    "model": "bulbul:v1",
+                    "model": "bulbul:v2",
                     "enable_preprocessing": True,
                 },
             )

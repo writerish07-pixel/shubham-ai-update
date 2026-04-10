@@ -35,7 +35,7 @@ class Settings:
     sarvam_tts_url: str = os.getenv(
         "SARVAM_TTS_URL", "https://api.sarvam.ai/text-to-speech"
     )
-    sarvam_tts_speaker: str = os.getenv("SARVAM_TTS_SPEAKER", "meera")
+    sarvam_tts_speaker: str = os.getenv("SARVAM_TTS_SPEAKER", "anushka")
     sarvam_tts_language: str = os.getenv("SARVAM_TTS_LANGUAGE", "hi-IN")
 
     # --- STT ---
